@@ -29,10 +29,10 @@ if (!get_mm_access_token()) { ?>
             'key' => 'call_from_settings'
         )));
 
-    $payloads = get_mm_jwt_payloads();
-
-    if (!empty($response) && !empty($response['response']['code'])) {
-        if ($response['response']['code'] == 200) { ?>
+    if (!empty($response) && !empty($response['response']) && !empty($response['response']['code'])) {
+        if ($response['response']['code'] == 200) {
+            $payloads = get_mm_jwt_payloads();
+            ?>
             <div class="notice notice-success">
                 <p>
                     <?php printf(
@@ -52,7 +52,7 @@ if (!get_mm_access_token()) { ?>
                             '<a href="%s">%s</a>',
                             esc_url($payloads->siteUrl . 'plugins-and-themes'),
                             esc_html__('here', MY_MANAGED_TEXT_DOMAIN)
-                        ),
+                        )
                     );
                     printf(esc_html__(', without needing to login to Wordpress.', MY_MANAGED_TEXT_DOMAIN));
                     ?>
