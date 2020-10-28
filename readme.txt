@@ -49,6 +49,13 @@ A. Yes. Contact your maintenance agency for assistance.
 
 == Changelog ==
 
+1.1.0 (October 28, 2020)
+Updated auto-login handler.
+Added current user data for the initiator.
+Added settings link for plugin item.
+Added a redirect to the settings page after activating.
+Fixed minor bugs.
+
 1.0.0 (September 19, 2020)
 This is the first public version.
 
