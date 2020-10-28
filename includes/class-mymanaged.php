@@ -104,7 +104,7 @@ class MyManaged
     public function __construct()
     {
         $this->mymanaged = 'my-managed-site';
-        $this->version = '1.0.0';
+        $this->version = '1.1.0';
 
         /*************************************************************
          * ACCESS PLUGIN ADMIN PUBLIC METHODES FROM INSIDE
@@ -185,7 +185,14 @@ class MyManaged
          * The class responsible for defining all actions for AJAX
          */
         require_once MY_MANAGED_BASE_DIR . 'includes/class-mymanaged-ajax.php';
+        /**
+         * The class responsible for defining all helpers functions
+         */
         require_once MY_MANAGED_BASE_DIR . 'admin/lib/helpers.php';
+        /**
+         * The class responsible for update checker
+         */
+        require MY_MANAGED_BASE_DIR . 'plugin-update-checker/plugin-update-checker.php';
 
         $this->loader = new MyManaged_Loader();
     }
@@ -245,6 +252,15 @@ class MyManaged
          * It iterates through each plugin updated to see if ours is included
          */
         $this->loader->add_action( 'upgrader_process_complete', $plugin_admin, 'upgrader_process_complete', 10, 2 );
+
+        /**
+         * Redirect to settings page after plugin activated
+         */
+        add_action('activated_plugin', function ($plugin) {
+            if ($plugin == MY_MANAGED_BASE_NAME) {
+                exit(wp_redirect(admin_url('options-general.php?page=' . MY_MANAGED_TEXT_DOMAIN)));
+            }
+        });
     }
 
     /**

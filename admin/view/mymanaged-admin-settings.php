@@ -29,7 +29,7 @@ if (!get_mm_access_token()) { ?>
             'key' => 'call_from_settings'
         )));
 
-    if (!empty($response) && !empty($response['response']) && !empty($response['response']['code'])) {
+    if (!is_wp_error($response) && !empty($response['response']) && !empty($response['response']['code'])) {
         if ($response['response']['code'] == 200) {
             $payloads = get_mm_jwt_payloads();
             ?>

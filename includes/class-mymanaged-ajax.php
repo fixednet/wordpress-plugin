@@ -16,14 +16,12 @@
  *-----------------------------------------
  */
 defined('ABSPATH') or die("Direct access to the script does not allowed");
-/*-----------------------------------------*/
 
 /**
  * Handle AJAX calls
  */
 class MyManaged_AJAX
 {
-
     /**
      * Instance of this class.
      *
@@ -40,7 +38,6 @@ class MyManaged_AJAX
      */
     private function __construct()
     {
-
         // Backend AJAX calls
         if (current_user_can('manage_options')) {
             add_action('wp_ajax_admin_backend_call', array($this, 'ajax_backend_call'));
@@ -49,19 +46,17 @@ class MyManaged_AJAX
         // Frontend AJAX calls
         add_action('wp_ajax_admin_frontend_call', array($this, 'ajax_frontend_call'));
         add_action('wp_ajax_nopriv_frontend_call', array($this, 'ajax_frontend_call'));
-
     }
 
     /**
      * Return an instance of this class.
      *
+     * @return    object    A single instance of this class.
      * @since     1.0.0
      *
-     * @return    object    A single instance of this class.
      */
     public static function get_instance()
     {
-
         // If the single instance hasn't been set, set it now.
         if (null == self::$instance) {
             self::$instance = new self;
@@ -77,7 +72,6 @@ class MyManaged_AJAX
      */
     public function ajax_backend_call()
     {
-
         // Security check
         check_ajax_referer('referer_id', 'nonce');
 
@@ -97,7 +91,6 @@ class MyManaged_AJAX
      */
     public function ajax_frontend_call()
     {
-
         // Security check
         check_ajax_referer('referer_id', 'nonce');
 
@@ -109,5 +102,4 @@ class MyManaged_AJAX
 
         die();
     }
-
 }

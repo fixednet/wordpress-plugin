@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MyManagedSite
  * Description:       Connects your WordPress site to My Managed Site.
- * Version:           1.0.0
+ * Version:           1.1.0
  * Author:            MyManagedSite
  * Author URI:        https://mymanaged.site/
  * License:           GPL-2.0+
@@ -89,7 +89,6 @@ $mm_audit_class->hook_events();
 new MyManaged_Auto_Login();
 new MyManaged_Rest_API();
 
-require MY_MANAGED_BASE_DIR . 'plugin-update-checker/plugin-update-checker.php';
 $myUpdateChecker = Puc_v4_Factory::buildUpdateChecker(
     'https://github.com/mymanagedsite/wordpress-plugin/',
     __FILE__,

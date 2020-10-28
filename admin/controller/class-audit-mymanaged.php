@@ -58,6 +58,7 @@ if (!class_exists('MyManaged_Audit')) {
                 $this->mm_audit_changes(array(
                     'initiator' => array(
                         'key' => $action,
+                        'user' => $this->get_user_data(),
                     )
                 ));
             }
@@ -86,6 +87,7 @@ if (!class_exists('MyManaged_Audit')) {
                     $this->mm_audit_changes(array(
                         'initiator' => array(
                             'key' => $action . '-plugins',
+                            'user' => $this->get_user_data(),
                         )
                     ));
                 }
@@ -97,6 +99,7 @@ if (!class_exists('MyManaged_Audit')) {
                     $this->mm_audit_changes(array(
                         'initiator' => array(
                             'key' => $action === 'delete-selected' ? $action . '-plugins' : $action,
+                            'user' => $this->get_user_data(),
                         )
                     ));
                 }
@@ -124,6 +127,7 @@ if (!class_exists('MyManaged_Audit')) {
                     $this->mm_audit_changes(array(
                         'initiator' => array(
                             'key' => $action === 'update-selected' ? $action . '-plugins' : $action,
+                            'user' => $this->get_user_data(),
                         )
                     ));
                 }
@@ -151,10 +155,42 @@ if (!class_exists('MyManaged_Audit')) {
                     $this->mm_audit_changes(array(
                         'initiator' => array(
                             'key' => $action,
+                            'user' => $this->get_user_data(),
                         )
                     ));
                 }
             }
+        }
+
+        /**
+         * @return array|string
+         */
+        private function get_user_data()
+        {
+            $current_user = wp_get_current_user();
+
+            if (!$current_user) {
+                return 'unknown';
+            }
+
+            return array(
+                'user_email' => $current_user->user_email,
+                'user_ip' => $this->get_user_ip(),
+            );
+        }
+
+        private function get_user_ip()
+        {
+            if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+                //check ip from share internet
+                $ip = $_SERVER['HTTP_CLIENT_IP'];
+            } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+                //to check ip is pass from proxy
+                $ip = $_SERVER['HTTP_X_FORWARDED_FOR'];
+            } else {
+                $ip = $_SERVER['REMOTE_ADDR'];
+            }
+            return apply_filters('wpb_get_ip', $ip);
         }
 
         /**
