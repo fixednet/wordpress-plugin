@@ -16,15 +16,49 @@ if (!class_exists('MyManaged_Audit')) {
 
     class MyManaged_Audit extends MyManaged_Auth
     {
+        protected $old_themes;
+        protected $old_plugins;
+
         function hook_events()
         {
-            add_action('shutdown', array($this, 'events_admin_listener'));
-            add_action('switch_theme', array($this, 'mm_audit_changes'));
-            add_action('automatic_updates_complete', array($this, 'mm_upgrader_changes'), 10, 2);
+            if (get_mm_access_token()) {
+                $this->init_cron_schedules();
+
+                add_action('admin_init', array($this, 'event_admin_init'));
+                add_action('shutdown', array($this, 'events_admin_listener'));
+                add_action('switch_theme', array($this, 'event_switch_theme'), 10, 3);
+                add_action('automatic_updates_complete', array($this, 'event_automatic_updates'));
+            }
+        }
+
+        /**
+         * Triggered when a user accesses the admin area.
+         */
+        public function event_admin_init()
+        {
+            $this->old_themes = wp_get_themes();
+            $this->old_plugins = get_plugins();
+        }
+
+        /**
+         * Get removed themes.
+         *
+         * @return array of WP_Theme objects
+         */
+        protected function get_deleted_themes()
+        {
+            $result = $this->old_themes;
+            foreach ($result as $i => $theme) {
+                if (file_exists($theme->get_template_directory())) {
+                    unset($result[$i]);
+                }
+            }
+            return $result;
         }
 
         /**
          * Admin listener events callback
+         * @throws ImagickException
          */
         function events_admin_listener()
         {
@@ -50,14 +84,47 @@ if (!class_exists('MyManaged_Audit')) {
             if (!empty($script_name)) {
                 $actype = basename($script_name, '.php');
             }
-            $is_themes = 'themes' === $actype;
             $is_plugins = 'plugins' === $actype;
 
-            // Install/Uninstall theme/plugin.
-            if (in_array($action, array('install-theme', 'upload-theme', 'delete-theme', 'install-plugin', 'upload-plugin'))) {
-                $this->mm_audit_changes(array(
+            // Install plugin(s).
+            if (in_array($action, array('install-plugin', 'upload-plugin'))) {
+                $plugin = array_values(array_diff(array_keys(get_plugins()), array_keys($this->old_plugins)));
+                if (count($plugin) != 1) {
+                    return;
+                }
+
+                $installed_plugins = array();
+                $plugin_path = $plugin[0];
+                $plugin = get_plugins();
+                $plugin = $plugin[$plugin_path];
+
+                $installed_plugins[$plugin_path] = $plugin;
+
+                $this->audit_changes(array(
                     'initiator' => array(
                         'key' => $action,
+                        'plugins' => $installed_plugins,
+                        'user' => $this->get_user_data(),
+                    )
+                ));
+            }
+
+            // Install theme.
+            if (in_array($action, array('install-theme', 'upload-theme'))) {
+                $installed_themes = array();
+                $themes = array_diff(wp_get_themes(), $this->old_themes);
+
+                if (empty($themes))
+                    return;
+
+                foreach ($themes as $name => $theme) {
+                    $installed_themes[$name] = $theme;
+                }
+
+                $this->audit_changes(array(
+                    'initiator' => array(
+                        'key' => $action,
+                        'themes' => $installed_themes,
                         'user' => $this->get_user_data(),
                     )
                 ));
@@ -82,11 +149,37 @@ if (!class_exists('MyManaged_Audit')) {
                     $post_array['checked'][] = $post_array['plugin'];
                 }
 
-                if ((isset($get_array['checked']) && !empty($get_array['checked'])) ||
-                    (isset($post_array['checked']) && !empty($post_array['checked']))) {
-                    $this->mm_audit_changes(array(
+                $plugins = array();
+
+                if (isset($get_array['checked']) && !empty($get_array['checked'])) {
+                    foreach ($get_array['checked'] as $plugin_file) {
+                        $plugin_data = get_plugin_data(
+                            WP_PLUGIN_DIR . '/' . $plugin_file,
+                            false,
+                            false);
+                        $plugins[$plugin_file] = $plugin_data;
+                    }
+
+                    $this->audit_changes(array(
                         'initiator' => array(
                             'key' => $action . '-plugins',
+                            'plugins' => $plugins,
+                            'user' => $this->get_user_data(),
+                        )
+                    ));
+                } elseif (isset($post_array['checked']) && !empty($post_array['checked'])) {
+                    foreach ($post_array['checked'] as $plugin_file) {
+                        $plugin_data = get_plugin_data(
+                            WP_PLUGIN_DIR . '/' . $plugin_file,
+                            false,
+                            false);
+                        $plugins[$plugin_file] = $plugin_data;
+                    }
+
+                    $this->audit_changes(array(
+                        'initiator' => array(
+                            'key' => $action . '-plugins',
+                            'plugins' => $plugins,
                             'user' => $this->get_user_data(),
                         )
                     ));
@@ -95,14 +188,49 @@ if (!class_exists('MyManaged_Audit')) {
 
             // Delete plugin(s).
             if (in_array($action, array('delete-plugin', 'delete-selected'))) {
-                if (isset($post_array['plugin']) || $post_array['checked']) {
-                    $this->mm_audit_changes(array(
+                $deleted_plugins = array();
+
+                if (isset($post_array['plugin'])) {
+                    $deleted_plugins[$post_array['plugin']] = 'Removed';
+
+                    $this->audit_changes(array(
                         'initiator' => array(
                             'key' => $action === 'delete-selected' ? $action . '-plugins' : $action,
+                            'plugins' => $deleted_plugins,
+                            'user' => $this->get_user_data(),
+                        )
+                    ));
+
+                } elseif (isset($post_array['checked'])) {
+                    foreach ($post_array['checked'] as $plugin_file) {
+                        $deleted_plugins[$plugin_file] = 'Removed';
+                    }
+
+                    $this->audit_changes(array(
+                        'initiator' => array(
+                            'key' => $action === 'delete-selected' ? $action . '-plugins' : $action,
+                            'plugins' => $deleted_plugins,
                             'user' => $this->get_user_data(),
                         )
                     ));
                 }
+            }
+
+            // Uninstall theme.
+            if (in_array($action, array('delete-theme'))) {
+                $deleted_themes = array();
+
+                foreach ($this->get_deleted_themes() as $index => $theme) {
+                    $deleted_themes[$index] = $theme;
+                }
+
+                $this->audit_changes(array(
+                    'initiator' => array(
+                        'key' => $action,
+                        'themes' => $deleted_themes,
+                        'user' => $this->get_user_data(),
+                    )
+                ));
             }
 
             // Upgrade plugin(s).
@@ -124,18 +252,25 @@ if (!class_exists('MyManaged_Audit')) {
                 }
 
                 if (isset($plugins)) {
-                    $this->mm_audit_changes(array(
+                    $plugins_upgraded = array();
+
+                    foreach ($plugins as $plugin_file) {
+                        $plugin_data = get_plugin_data(WP_PLUGIN_DIR . '/' . $plugin_file, false, true);
+                        $plugins_upgraded[$plugin_file] = $plugin_data;
+                    }
+
+                    $this->audit_changes(array(
                         'initiator' => array(
                             'key' => $action === 'update-selected' ? $action . '-plugins' : $action,
+                            'plugins' => $plugins_upgraded,
                             'user' => $this->get_user_data(),
                         )
                     ));
                 }
             }
 
-            // Update theme(s).
+            // Upgrade theme(s).
             if (in_array($action, array('upgrade-theme', 'update-theme', 'update-selected-themes'))) {
-                // Themes.
                 $themes = array();
 
                 // Check $_GET array cases.
@@ -152,9 +287,16 @@ if (!class_exists('MyManaged_Audit')) {
                     $themes = explode(',', $post_array['themes']);
                 }
                 if (isset($themes)) {
-                    $this->mm_audit_changes(array(
+                    $themes_upgraded = array();
+
+                    foreach ($themes as $theme) {
+                        $themes_upgraded[$theme] = wp_get_theme($theme);
+                    }
+
+                    $this->audit_changes(array(
                         'initiator' => array(
                             'key' => $action,
+                            'themes' => $themes_upgraded,
                             'user' => $this->get_user_data(),
                         )
                     ));
@@ -165,7 +307,7 @@ if (!class_exists('MyManaged_Audit')) {
         /**
          * @return array|string
          */
-        private function get_user_data()
+        function get_user_data()
         {
             $current_user = wp_get_current_user();
 
@@ -179,6 +321,9 @@ if (!class_exists('MyManaged_Audit')) {
             );
         }
 
+        /**
+         * @return mixed|void
+         */
         private function get_user_ip()
         {
             if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
@@ -198,14 +343,24 @@ if (!class_exists('MyManaged_Audit')) {
          */
         function init_cron_schedules()
         {
-            if (get_mm_access_token()) {
-                add_filter('cron_schedules', array($this, 'audit_every_hourly'));
-                add_action('audit_every_hourly', array($this, 'mm_audit_changes'));
-                // Schedule an action if it's not already scheduled
-                if (!wp_next_scheduled('audit_every_hourly') && get_mm_access_token()) {
-                    wp_schedule_event(time(), 'mm_audit_changes', 'audit_every_hourly');
-                }
+            add_filter('cron_schedules', array($this, 'audit_every_hourly'));
+            add_action('audit_every_hourly', array($this, 'request_state_every_hourly'));
+            // Schedule an action if it's not already scheduled
+            if (!wp_next_scheduled('audit_every_hourly')) {
+                wp_schedule_event(time(), 'request_state_every_hourly', 'audit_every_hourly');
             }
+        }
+
+        /**
+         * @throws ImagickException
+         */
+        function request_state_every_hourly()
+        {
+            $this->audit_changes(array(
+                'initiator' => array(
+                    'key' => 'audit_every_hourly',
+                )
+            ));
         }
 
         /**
@@ -216,9 +371,9 @@ if (!class_exists('MyManaged_Audit')) {
          */
         function audit_every_hourly($schedules)
         {
-            $schedules['mm_audit_changes'] = array(
+            $schedules['request_state_every_hourly'] = array(
                 'interval' => 3600,
-                'display' => __('Every 60 Minutes', MY_MANAGED_TEXT_DOMAIN)
+                'display' => __('Once Hourly', MY_MANAGED_TEXT_DOMAIN)
             );
 
             return $schedules;
@@ -235,7 +390,7 @@ if (!class_exists('MyManaged_Audit')) {
             $all_themes = wp_get_themes();
 
             foreach ($all_themes as $theme) {
-                $themes{$theme->stylesheet} = array(
+                $themes[$theme->get_stylesheet()] = array(
                     'Name' => $theme->get('Name'),
                     'Description' => $theme->get('Description'),
                     'Author' => $theme->get('Author'),
@@ -253,14 +408,33 @@ if (!class_exists('MyManaged_Audit')) {
         }
 
         /**
-         * @param $upgrader_object
-         * @param $hook_extra
+         * @param $update_results
+         * @throws ImagickException
          */
-        private function mm_upgrader_changes($upgrader_object, $hook_extra)
+        function event_automatic_updates($update_results)
         {
-            $this->mm_audit_changes(array(
+            $this->audit_changes(array(
                 'initiator' => array(
-                    'key' => $hook_extra['action'] . '_' . $hook_extra['type'],
+                    'key' => 'automatic-' . $update_results . '-update',
+                )
+            ));
+        }
+
+        /**
+         * @param $new_name
+         * @param $new_theme
+         * @param $old_theme
+         * @throws ImagickException
+         */
+        function event_switch_theme($new_name, $new_theme, $old_theme)
+        {
+            $switch_theme[$new_name] = $new_theme;
+
+            $this->audit_changes(array(
+                'initiator' => array(
+                    'key' => 'switch-theme',
+                    'themes' => $switch_theme,
+                    'user' => $this->get_user_data(),
                 )
             ));
         }
@@ -268,39 +442,33 @@ if (!class_exists('MyManaged_Audit')) {
         /**
          * @param array $option
          * @return array|bool|mixed
+         * @throws ImagickException
          */
-        function mm_audit_changes($option = array())
+        function audit_changes($option = array())
         {
             require_once(ABSPATH . 'wp-admin/includes/class-wp-debug-data.php');
             require_once(ABSPATH . 'wp-admin/includes/update.php');
-            require_once(ABSPATH . 'wp-admin/includes/misc.php');
             require_once(ABSPATH . 'wp-admin/includes/plugin.php');
+            require_once(ABSPATH . 'wp-admin/includes/misc.php');
 
             wp_update_plugins();
             wp_update_themes();
 
             $params = array(
                 'native_debug_data' => WP_Debug_Data::debug_data(),
-                'plugins' => get_plugins(),
-                'plugin_updates' => get_plugin_updates(),
-                'themes' => $this->get_themes_list(),
-                'theme_updates' => get_theme_updates(),
+                'plugins' => (object) get_plugins(),
+                'plugin_updates' => (object) get_plugin_updates(),
+                'themes' => (object) $this->get_themes_list(),
+                'theme_updates' => (object)get_theme_updates(),
                 'timestamp' => current_time('timestamp'),
             );
 
-            if (!empty($option) && is_array($option))
+            if (!empty($option))
                 $params = array_merge($params, $option);
-
-            elseif (current_action() && did_action(current_action()) === 1)
-                $params = array_merge($params, array(
-                    'initiator' => array(
-                        'key' => current_action()
-                    )
-                ));
 
             return $this->api_call('POST',
                 $this->get_route($this->get_changes_route()),
-                $this->get_mm_auth_header(),
+                $this->get_auth_header(),
                 json_encode($params));
         }
     }

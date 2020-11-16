@@ -37,7 +37,7 @@ if (!class_exists('MyManaged_Auth')) {
         {
             $response = $this->api_call('POST',
                 $this->get_route($this->get_login_route()),
-                $this->get_mm_auth_header(),
+                $this->get_auth_header(),
                 json_encode(array('nonce' => $nonce)));
 
             if (!is_wp_error($response) && !empty($response['response']) && $response['response']['code'] == 200) {
@@ -84,7 +84,7 @@ if (!class_exists('MyManaged_Auth')) {
          *
          * @return array
          */
-        function get_mm_auth_header()
+        function get_auth_header()
         {
             return array(
                 'Content-Type' => 'application/json',

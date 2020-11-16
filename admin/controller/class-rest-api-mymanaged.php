@@ -84,10 +84,11 @@ if (!class_exists('MyManaged_Rest_API')) {
          * @param $initiator_key
          * @param $parameters
          * @param $response
+         * @throws ImagickException
          */
         function initiator_upgrade_request($initiator_key, $parameters, $response)
         {
-            $this->audit_class->mm_audit_changes(array(
+            $this->audit_class->audit_changes(array(
                 'initiator' => array(
                     'key' => $initiator_key,
                     'slug' => $parameters->slug,
@@ -126,9 +127,13 @@ if (!class_exists('MyManaged_Rest_API')) {
             });
         }
 
+        /**
+         * @return array|bool|mixed
+         * @throws ImagickException
+         */
         function request_state_callback()
         {
-            return $this->audit_class->mm_audit_changes(array(
+            return $this->audit_class->audit_changes(array(
                 'initiator' => array(
                     'key' => 'request_state',
                 )));
@@ -149,10 +154,12 @@ if (!class_exists('MyManaged_Rest_API')) {
          *
          * @param $request_data
          * @return string[]|WP_Error
+         * @throws ImagickException
          */
         function update_plugin_callback($request_data)
         {
             $parameters = json_decode($request_data->get_body());
+            $initiator_key = 'update-plugin';
 
             if (!isset($parameters->slug) || empty($parameters->slug))
                 return new WP_Error('no_plugin_files_for_upgrade',
@@ -173,7 +180,7 @@ if (!class_exists('MyManaged_Rest_API')) {
                 $error = new WP_Error('files_not_writable',
                     __('Plugin files not writable.'),
                     array('status' => 403));
-                $this->initiator_upgrade_request('update-plugin', $parameters, $error);
+                $this->initiator_upgrade_request($initiator_key, $parameters, $error);
                 return $error;
             }
 
@@ -183,7 +190,7 @@ if (!class_exists('MyManaged_Rest_API')) {
             $upgrader->upgrade($parameters->slug);
             $response = $this->parse_upgrade_response($upgrader->skin->get_upgrade_messages());
 
-            $this->initiator_upgrade_request('update-plugin', $parameters, $response);
+            $this->initiator_upgrade_request($initiator_key, $parameters, $response);
 
             return $response;
         }
@@ -203,10 +210,12 @@ if (!class_exists('MyManaged_Rest_API')) {
          *
          * @param $request_data
          * @return array|bool|mixed|string[]
+         * @throws ImagickException
          */
         function update_theme_callback($request_data)
         {
             $parameters = json_decode($request_data->get_body());
+            $initiator_key = 'update-theme';
 
             if (!isset($parameters->slug) || empty($parameters->slug))
                 return new WP_Error('no_theme_files_for_upgrade',
@@ -227,7 +236,7 @@ if (!class_exists('MyManaged_Rest_API')) {
                 $error = new WP_Error('files_not_writable',
                     __('Theme files not writable.'),
                     array('status' => 403));
-                $this->initiator_upgrade_request('update-theme', $parameters, $error);
+                $this->initiator_upgrade_request($initiator_key, $parameters, $error);
                 return $error;
             }
 
@@ -237,7 +246,7 @@ if (!class_exists('MyManaged_Rest_API')) {
             $upgrader->upgrade($parameters->slug);
             $response = $this->parse_upgrade_response($upgrader->skin->get_upgrade_messages());
 
-            $this->initiator_upgrade_request('update-theme', $parameters, $response);
+            $this->initiator_upgrade_request($initiator_key, $parameters, $response);
 
             return $response;
         }

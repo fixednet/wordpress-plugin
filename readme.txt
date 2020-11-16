@@ -9,9 +9,9 @@ Author:            MyManagedSite
 Donate link:       None
 Requires PHP:      7.0
 Requires at least: 4.8
-Tested up to:      5.5.1
-Stable tag:        1.1.0
-Version:           1.1.0
+Tested up to:      5.5.3
+Stable tag:        1.2.0
+Version:           1.2.0
 
 == Description ==
 
@@ -48,6 +48,16 @@ A. Yes. Contact your maintenance agency for assistance.
 2. This is the Settings page of the plugin with global font settings.
 
 == Changelog ==
+
+1.2.0 (November 16, 2020)
+Fixed callback for switch theme hook.
+Updated cron event.
+Updated request state handler.
+Updated plugins/themes events.
+Added automatic updates event.
+Updated docs.
+Tested up to WordPress 5.5.3.
+Fixed minor bugs.
 
 1.1.0 (October 28, 2020)
 Updated auto-login handler.

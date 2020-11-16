@@ -24,9 +24,10 @@ if (!get_mm_access_token()) { ?>
     <?php
 } else {
     $audit_class = new MyManaged_Audit();
-    $response = $audit_class->mm_audit_changes(array(
+    $response = $audit_class->audit_changes(array(
         'initiator' => array(
-            'key' => 'call_from_settings'
+            'key' => 'call_from_settings',
+            'user' => $audit_class->get_user_data(),
         )));
 
     if (!is_wp_error($response) && !empty($response['response']) && !empty($response['response']['code'])) {

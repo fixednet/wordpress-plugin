@@ -2,7 +2,7 @@
 /**
  * Plugin Name:       MyManagedSite
  * Description:       Connects your WordPress site to My Managed Site.
- * Version:           1.1.0
+ * Version:           1.2.0
  * Author:            MyManagedSite
  * Author URI:        https://mymanaged.site/
  * License:           GPL-2.0+
@@ -82,9 +82,8 @@ global $pbt_prefix_mymanage;
 $pbt_prefix_mymanage = new MyManaged();
 $pbt_prefix_mymanage->run();
 
-$mm_audit_class = new MyManaged_Audit();
-$mm_audit_class->init_cron_schedules();
-$mm_audit_class->hook_events();
+$audit_class = new MyManaged_Audit();
+$audit_class->hook_events();
 
 new MyManaged_Auto_Login();
 new MyManaged_Rest_API();

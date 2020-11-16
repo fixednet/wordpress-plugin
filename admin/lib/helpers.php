@@ -36,8 +36,8 @@ if (!function_exists('mm_get_plugin_title')) {
      */
     function mm_get_plugin_title()
     {
-        $title = get_option('mm_white_label')['title'];
-        return $title ? $title : MY_MANAGED_TITLE;
+        $white_label = get_option('mm_white_label');
+        return !empty($white_label['title']) ? $white_label['title'] : MY_MANAGED_TITLE;
     }
 }
 

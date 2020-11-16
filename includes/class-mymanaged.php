@@ -104,7 +104,7 @@ class MyManaged
     public function __construct()
     {
         $this->mymanaged = 'my-managed-site';
-        $this->version = '1.1.0';
+        $this->version = '1.2.0';
 
         /*************************************************************
          * ACCESS PLUGIN ADMIN PUBLIC METHODES FROM INSIDE
